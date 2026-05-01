@@ -1,4 +1,5 @@
 ﻿using FF1Lib.Helpers;
+using FF1Lib.ProjectIdentity;
 
 namespace FF1Lib
 {
@@ -379,39 +380,69 @@ namespace FF1Lib
 				    break;
 			    }
 
-			    var spells = new List<FF1Lib.Spell>();
-			    if (itemId == Item.PowerGauntlets) {
-				spells = powerGauntletSpells;
-			    } else if (itemId == Item.WhiteShirt) {
-				spells = whiteShirtSpells;
-			    } else if (itemId == Item.BlackShirt) {
-				spells = blackShirtSpells;
-			    } else if (itemId == Item.Ribbon) {
-			    } else if (tier >= 1 &&
-				       (armorType == HELM || armorType == GAUNTLET ||
-					armorType == SHIRT || armorType == CAPE ||
-					armorType == RING))
-			    {
-				var roll = rng.Between(0, 100);
-				if (roll < 50) {
-				    spells = otherSpells;
-				}
-			    }
-			    if (spells.Count > 0 && !noItemMagic) {
-				spellIndex = (byte)(spells[rng.Between(0, spells.Count-1)]-Spell.CURE);
-				name = allSpells[spellIndex].Name;
-			    }
+					// Project direction: no active armor casting for now.
+					// Armor should express worn truth through resists / packages.
+					var spells = new List<FF1Lib.Spell>();
 
-			    var chooseResist = new List<byte>(resists);
-				if (!noResists)
-				{
-					if (itemId == Item.Ribbon)
+					if (ProjectItemMagicBridge.AllowArmorActiveCasts(flags))
 					{
-						elementalResist |= 0xFF;
-						name = "Ribbon";
-						chooseResist.Clear();
+						if (itemId == Item.PowerGauntlets)
+						{
+							spells = powerGauntletSpells;
+						}
+						else if (itemId == Item.WhiteShirt)
+						{
+							spells = whiteShirtSpells;
+						}
+						else if (itemId == Item.BlackShirt)
+						{
+							spells = blackShirtSpells;
+						}
+						else if (itemId == Item.Ribbon)
+						{
+						}
+						else if (tier >= 1 &&
+							   (armorType == HELM || armorType == GAUNTLET ||
+								armorType == SHIRT || armorType == CAPE ||
+								armorType == RING))
+						{
+							var roll = rng.Between(0, 100);
+							if (roll < 50)
+							{
+								spells = otherSpells;
+							}
+						}
+
+						if (spells.Count > 0 && !noItemMagic)
+						{
+							spellIndex = (byte)(spells[rng.Between(0, spells.Count - 1)] - Spell.CURE);
+							name = allSpells[spellIndex].Name;
+						}
 					}
-					else if (tier == 2 && (armorType == ARMOR || armorType == SHIRT))
+
+					var chooseResist = new List<byte>(resists);
+				if (!noResists)
+
+						if (ProjectItemMagicBridge.TryGetForcedArmorResistPackage(itemId, out var forcedArmorResist))
+						{
+							elementalResist |= forcedArmorResist;
+							chooseResist.RemoveAll(resist => (forcedArmorResist & resist) != 0);
+						}
+
+					{
+						if (itemId == Item.Ribbon)
+						{
+							elementalResist |= 0xFF;
+							name = "Ribbon";
+							chooseResist.Clear();
+						}
+						else if (itemId == Item.PowerGauntlets)
+						{
+							elementalResist |= ProjectArmorResistPackages.PowerGauntletsResistMask;
+							name = "Protect";
+							chooseResist.Clear();
+						}
+						else if (tier == 2 && (armorType == ARMOR || armorType == SHIRT))
 					{
 						elementalResist |= chooseResist.SpliceRandom(rng);
 						name = resistNames[elementalResist];

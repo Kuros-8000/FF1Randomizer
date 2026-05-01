@@ -1,0 +1,29 @@
+--- a/FF1Lib/ItemMagic.cs
++++ b/FF1Lib/ItemMagic.cs
+@@ -1,4 +1,5 @@
+ using FF1Lib.Helpers;
++using FF1Lib.ProjectIdentity;
+ 
+ namespace FF1Lib
+ {
+@@ -72,6 +73,10 @@
+ 			else if (flags.ItemMagicPool == ItemMagicPool.Support)
+ 			{
+ 				Spells = GetSupportSpells(rng);
++			}
++			else if (flags.ItemMagicPool == ItemMagicPool.ProjectSupport)
++			{
++				Spells = ProjectSupportSpells.GetSupportCleanMagicSpells(GetSpells(), rng);
+ 			}
+ 			else if (flags.ItemMagicPool == ItemMagicPool.Curated)
+ 			{
+@@ -458,7 +463,8 @@
+ 		Low = 2,
+ 		Support = 3,
+ 		Curated = 4,
+-		Random = 5
++		Random = 5,
++		ProjectSupport = 6
+ 	}
+ 
+ 	public enum GuaranteedDefenseItem

@@ -1,4 +1,5 @@
 ﻿using FF1Lib.Helpers;
+using FF1Lib.ProjectIdentity;
 
 namespace FF1Lib
 {
@@ -378,22 +379,9 @@ namespace FF1Lib
 		    var spellHelper = new SpellHelper(this);
 		    var Spells = GetSpells();
 
-		    var defenseSwordSpells = new List<FF1Lib.Spell>(spellHelper.FindSpells(SpellRoutine.Ruse, SpellTargeting.Any).
-								Concat(spellHelper.FindSpells(SpellRoutine.ArmorUp, SpellTargeting.AllCharacters)).
-								Concat(spellHelper.FindSpells(SpellRoutine.DefElement, SpellTargeting.Any).Where(s => s.Info.status == SpellStatus.Any)).
-								Select(s => s.Id));
-		    var thorHammerSpells =  new List<FF1Lib.Spell>(spellHelper.FindSpells(SpellRoutine.Damage, SpellTargeting.AllEnemies).
-								   Where(s => s.Info.elem != (byte)SpellElement.None).
-								   Select(s => s.Id));
-		    var otherSpells = new List<FF1Lib.Spell>(spellHelper.FindSpells(SpellRoutine.Damage, SpellTargeting.AllEnemies).
-							     Where(s => s.Info.elem != (byte)SpellElement.None).
-							     Concat(spellHelper.FindSpells(SpellRoutine.DamageUndead, SpellTargeting.AllEnemies)).
-							     Concat(spellHelper.FindSpells(SpellRoutine.Heal, SpellTargeting.AllCharacters)).
-							     Concat(spellHelper.FindSpells(SpellRoutine.ArmorUp, SpellTargeting.AllCharacters)).
-							     Concat(spellHelper.FindSpells(SpellRoutine.Lock, SpellTargeting.OneEnemy)).
-							     Concat(spellHelper.FindSpells(SpellRoutine.Lock, SpellTargeting.AllEnemies)).
-							     Concat(spellHelper.FindSpells(SpellRoutine.Ruse, SpellTargeting.Any)).
-							     Select(s => s.Id));
+			var defenseSwordSpells = ProjectWeaponCastPools.ForDefenseSword(spellHelper);
+			var thorHammerSpells = ProjectWeaponCastPools.ForThorHammer(spellHelper);
+			var otherSpells = ProjectWeaponCastPools.ForGenericWeapon(spellHelper); ;
 
 		    var weaponNames = new List<string>();
 		    var weaponGfx = new List<int>();

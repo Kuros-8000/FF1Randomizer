@@ -1,5 +1,5 @@
 ﻿using FF1Lib.Helpers;
-
+using FF1Lib.ProjectIdentity;
 namespace FF1Lib
 {
 	public partial class FF1Rom : NesRom
@@ -23,10 +23,19 @@ namespace FF1Lib
 
 			if (flags.GuaranteedDefenseItem != GuaranteedDefenseItem.None && !(flags.ItemMagicMode == ItemMagicMode.None))
 			{
-				CraftDefenseItem(flags);
+				CraftDefenseItem(flags, rng);
 			}
 
-			if (flags.GuaranteedPowerItem != GuaranteedPowerItem.None && !(flags.ItemMagicMode == ItemMagicMode.None))
+			if (ProjectItemMagicBridge.AllowGuaranteedPowerItemCast(flags)
+	&& flags.GuaranteedPowerItem != GuaranteedPowerItem.None
+	&& flags.ItemMagicMode != ItemMagicMode.None)
+			{
+				CraftPowerItem(flags);
+			}
+			{
+				// Power Gauntlets are handled as a worn resist package now.
+				// Do not write an active spell onto them.
+			}
 			{
 				CraftPowerItem(flags);
 			}
@@ -56,8 +65,7 @@ namespace FF1Lib
 				magicWeapons = Weapon.LoadAllWeapons(this, flags).Where(w => w.Spell >= Spell.CURE).Select(w => w.Id);
 			}
 
-			var magicArmor = Armor.LoadAllArmors(this, flags).Where(w => w.Spell >= Spell.CURE).Select(w => w.Id);
-			var magicItems = magicWeapons.Concat(magicArmor).ToList();
+			var magicItems = magicWeapons.ToList();
 
 			List<MagicSpell> Spells;
 
@@ -72,6 +80,10 @@ namespace FF1Lib
 			else if (flags.ItemMagicPool == ItemMagicPool.Support)
 			{
 				Spells = GetSupportSpells(rng);
+			}
+			else if (flags.ItemMagicPool == ItemMagicPool.ProjectSupport)
+			{
+				Spells = ProjectSupportSpells.GetSupportCleanMagicSpells(GetSpells(), rng);
 			}
 			else if (flags.ItemMagicPool == ItemMagicPool.Curated)
 			{
@@ -382,33 +394,14 @@ namespace FF1Lib
 
 	public partial class FF1Rom
 	{
-		public void CraftDefenseItem(Flags flags)
+		public void CraftDefenseItem(Flags flags, MT19337 rng)
 		{
 			var newspell = GetSpells();
+			var spellHelper = new SpellHelper(this);
 
-			var ruse = newspell.Select((s, i) => (s, i)).Where(x => x.s.Data[4] == 0x10 && x.s.Data[3] == 0x04).Select(s => (int?)s.i).FirstOrDefault();
-			var inv = newspell.Select((s, i) => (s, i)).Where(x => x.s.Data[4] == 0x10 && x.s.Data[3] == 0x10).Select(s => (int?)s.i).FirstOrDefault();
-			var inv2 = newspell.Select((s, i) => (s, i)).Where(x => x.s.Data[4] == 0x10 && x.s.Data[3] == 0x08).Select(s => (int?)s.i).FirstOrDefault();
-
-			//no spell was found
-			if (ruse == null && inv == null && inv2 == null) return;
-
-			//backup spells
-			ruse = ruse.HasValue ? ruse : (inv2.HasValue ? inv2 : inv);
-			inv = inv.HasValue ? inv : (inv2.HasValue ? inv2 : ruse);
-			inv2 = inv2.HasValue ? inv2 : (ruse.HasValue ? ruse : inv);
-
-			switch (flags.GuaranteedDefenseItem)
+			if (ProjectCrownSpellPayloads.TryGetPowerRodSealSpell(newspell, spellHelper, rng, out var powerRodSpell))
 			{
-				case GuaranteedDefenseItem.RUSE:
-					WriteItemSpellData(newspell[ruse.Value], Item.PowerRod);
-					break;
-				case GuaranteedDefenseItem.INV:
-					WriteItemSpellData(newspell[inv.Value], Item.PowerRod);
-					break;
-				case GuaranteedDefenseItem.INV2:
-					WriteItemSpellData(newspell[inv2.Value], Item.PowerRod);
-					break;
+				WriteItemSpellData(powerRodSpell, Item.PowerRod);
 			}
 		}
 
@@ -458,7 +451,8 @@ namespace FF1Lib
 		Low = 2,
 		Support = 3,
 		Curated = 4,
-		Random = 5
+		Random = 5,
+		ProjectSupport = 6
 	}
 
 	public enum GuaranteedDefenseItem

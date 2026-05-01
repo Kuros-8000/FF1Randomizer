@@ -5,14 +5,18 @@ namespace FF1R.Commands
 	using System;
 	using McMaster.Extensions.CommandLineUtils;
 	using System.IO;
+	using System.Linq;
+	using System.Threading.Tasks;
 
 	using FF1Lib;
 	using FFR.Common;
-	using System.Threading.Tasks;
+	using FF1R.Curated;
 
 	[Command("generate", Description = "Randomize a Final Fantasy ROM")]
 	class Generate
 	{
+		private const int CuratedBatchLimit = 10;
+
 		[Argument(0, Description = "Final Fantasy ROM to randomize")]
 		[FileExists]
 		public string RomPath { get; }
@@ -42,7 +46,7 @@ namespace FF1R.Commands
 		// Will take precedence over any flags defined by earlier options.
 		[Option(Description = "Load from exported json",
 			ShortName = "j")]
-	        [FileExists]
+		[FileExists]
 		public string Json { get; }
 
 		[Option(Description = "Enable verbose output",
@@ -62,7 +66,7 @@ namespace FF1R.Commands
 						new Preferences()
 					);
 				}
-				catch(System.IO.FileNotFoundException)
+				catch (System.IO.FileNotFoundException)
 				{
 					console.Error.WriteLine($"Preset not found: '{Preset}'");
 					return 1;
@@ -84,8 +88,7 @@ namespace FF1R.Commands
 			{
 				try
 				{
-
-				    settings = RandomizerSettings.FromJson(Seed, Json);
+					settings = RandomizerSettings.FromJson(Seed, Json);
 				}
 				catch
 				{
@@ -99,12 +102,19 @@ namespace FF1R.Commands
 				{
 					settings = new RandomizerSettings(Seed, FlagString);
 				}
-				catch(Exception e)
+				catch (Exception e)
 				{
 					console.Error.WriteLine(e.ToString());
 					console.Error.WriteLine("Ensure that you are using an 8 character hexadecimal string as a seed and a valid base64 encoded set of flags.");
 					return 1;
 				}
+			}
+
+			// Temporary curated batch-roll mode:
+			// if -o points to an existing directory, treat it as a batch output folder.
+			if (!String.IsNullOrEmpty(OutFile) && Directory.Exists(OutFile))
+			{
+				return await RunCuratedBatch(console, settings, OutFile);
 			}
 
 			var outFile = String.IsNullOrEmpty(OutFile)
@@ -115,10 +125,12 @@ namespace FF1R.Commands
 			await rom.Randomize(settings.Seed, settings.Flags, settings.Preferences);
 			rom.Save(outFile);
 
-			if (Verbose) {
+			if (Verbose)
+			{
 				console.WriteLine($"Seed: {settings.Seed.ToHex()}");
 				console.WriteLine($"Flags: {Flags.EncodeFlagsText(settings.Flags)}");
 			}
+
 			console.WriteLine($"ROM created at: {outFile}");
 
 			if (settings.Flags.Spoilers && Utilities.SpoilerCache.Length > 0)
@@ -132,6 +144,88 @@ namespace FF1R.Commands
 			}
 
 			return 0;
+		}
+
+		async Task<int> RunCuratedBatch(IConsole console, RandomizerSettings baseSettings, string outputDirectory)
+		{
+			var plan = new CuratedSeedPlan
+			{
+				MaxAttempts = CuratedBatchLimit
+			};
+
+			var evaluator = new CuratedSeedEvaluator();
+
+			console.WriteLine($"Curated batch mode enabled.");
+			console.WriteLine($"Output folder: {outputDirectory}");
+			console.WriteLine($"Rolling up to {plan.MaxAttempts} seeds.");
+
+			for (int attempt = 1; attempt <= plan.MaxAttempts; attempt++)
+			{
+				var candidateSeed = GenerateRandomSeedString();
+				var candidateSettings = new RandomizerSettings(
+					candidateSeed,
+					baseSettings.Flags,
+					baseSettings.Preferences
+				);
+
+				var result = evaluator.Evaluate(candidateSettings, plan);
+
+				console.WriteLine($"[{attempt}/{plan.MaxAttempts}] Seed {candidateSeed} -> score {result.Score} -> {(result.Accepted ? "ACCEPT" : "reject")}");
+
+				if (!result.Accepted)
+				{
+					if (result.RejectionReasons != null && result.RejectionReasons.Count > 0)
+					{
+						foreach (var reason in result.RejectionReasons)
+						{
+							console.WriteLine($"  - {reason}");
+						}
+					}
+
+					if (Verbose && result.Tags != null && result.Tags.Count > 0)
+					{
+						console.WriteLine($"  Tags: {String.Join(", ", result.Tags)}");
+					}
+
+					continue;
+				}
+
+				var outFile = Path.Combine(
+					outputDirectory,
+					GenerateDefaultFilename(Path.GetFileName(RomPath), candidateSettings)
+				);
+
+				var rom = new FF1Rom(RomPath);
+				await rom.Randomize(candidateSettings.Seed, candidateSettings.Flags, candidateSettings.Preferences);
+				rom.Save(outFile);
+
+				console.WriteLine($"Accepted curated ROM created at: {outFile}");
+
+				if (result.Tags != null && result.Tags.Count > 0)
+				{
+					console.WriteLine($"Tags: {String.Join(", ", result.Tags)}");
+				}
+
+				if (candidateSettings.Flags.Spoilers && Utilities.SpoilerCache.Length > 0)
+				{
+					var spoilerOut = outFile.Substring(0, outFile.Length - 4) + ".txt";
+					using (StreamWriter writer = new(spoilerOut))
+					{
+						writer.Write(Utilities.SpoilerCache);
+					}
+					console.WriteLine($"Spoilers File created at: {spoilerOut}");
+				}
+
+				return 0;
+			}
+
+			console.Error.WriteLine("No curated seed passed the filter in the current batch.");
+			return 2;
+		}
+
+		string GenerateRandomSeedString()
+		{
+			return Random.Shared.NextInt64(0, 0x100000000L).ToString("X8");
 		}
 
 		string GenerateDefaultFilename(string rom, RandomizerSettings settings)

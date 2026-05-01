@@ -47,7 +47,18 @@ namespace FF1Lib
 			}
 		}
 
-
+		private List<Classes> GetTopTierResistPool()
+		{
+			return new List<Classes>
+	{
+		Classes.Fighter,
+		Classes.Thief,
+		Classes.BlackBelt,
+		Classes.RedMage,
+		Classes.BlackMage,
+		Classes.WhiteMage
+	};
+		}
 		public void GenerateLists(List<BonusMalus> baseTier, Dictionary<Classes, List<BonusMalus>> classesBlessingsLists, List<BonusMalus> maluses, List<string> olditemnames, ItemNames itemnames, Flags flags, MT19337 rng, FF1Rom rom)
 		{
 			// Equipment lists
@@ -181,7 +192,7 @@ namespace FF1Lib
 				new BonusMalus(BonusMalusAction.ThorMaster, "Improved\n Thor@H", equipment: new List<Item>() { Item.ThorHammer }, Classes: new List<Classes> { Classes.Fighter, Classes.Thief, Classes.WhiteMage }),
 				new BonusMalus(BonusMalusAction.Hunter, "Hurt Undead", mod: 0x18),
 				new BonusMalus(BonusMalusAction.Hunter, "Hurt Dragon", mod: 0x02),
-				new BonusMalus(BonusMalusAction.InnateResist, "Res. PEDTS", mod: (int)(SpellElement.Poison | SpellElement.Earth | SpellElement.Death | SpellElement.Time | SpellElement.Status), Classes: new List<Classes> { Classes.Fighter, Classes.Thief, Classes.RedMage, Classes.BlackMage, Classes.WhiteMage }),
+				new BonusMalus(BonusMalusAction.InnateResist, "Res. PEDTS", mod: (int)(SpellElement.Poison | SpellElement.Earth | SpellElement.Death | SpellElement.Time | SpellElement.Status), Classes: GetTopTierResistPool()),
 				CreateRandomResistBonusMalus(rng),
 				CreateRandomResistBonusMalus(rng),
 			});
@@ -202,7 +213,7 @@ namespace FF1Lib
 				new BonusMalus(BonusMalusAction.SpcGrowth, "Improved MP", bytelist: improvedMPlist, Classes: new List<Classes> { Classes.RedMage, Classes.WhiteMage, Classes.BlackMage } ),
 				new BonusMalus(BonusMalusAction.PowerRW, "Sage", mod: 1, spelllist: wmWhiteSpells.Concat(bmBlackSpells).Concat(wwWhiteSpells).Concat(bwBlackSpells).ToList(), Classes: new List<Classes> { Classes.RedMage }),
 				new BonusMalus(BonusMalusAction.Hunter, "Hurt All", mod: 0xFF),
-				new BonusMalus(BonusMalusAction.InnateResist, "Res. All", mod: 0xFF, Classes: new List<Classes> { Classes.Fighter, Classes.Thief, Classes.RedMage, Classes.BlackMage, Classes.WhiteMage })
+				new BonusMalus(BonusMalusAction.InnateResist, "Res. All", mod: 0xFF, Classes: GetTopTierResistPool())
 			});
 
 			// Base Malus List
