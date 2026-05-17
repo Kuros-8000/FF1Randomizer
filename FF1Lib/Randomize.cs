@@ -215,6 +215,7 @@ public partial class FF1Rom : NesRom
 		// Tile Sets 
 		TileSetsData.Update(flags, rng);
 		TileSetsData.UpdateTrapTiles(this, ZoneFormations, flags, rng);
+		FF1Lib.ProjectIdentity.ProjectToFLabFixedTileEncounterContainer.Apply(TileSetsData, flags);
 		await DamageTilesHack(flags, Overworld);
 
 		await this.Progress();
@@ -284,6 +285,7 @@ public partial class FF1Rom : NesRom
 		// Item Placement
 		ItemPlacement itemPlacement = ItemPlacement.Create(this, flags, PlacementContext, ShopData.ItemShopSlot, Overworld, sanityChecker);
 		itemPlacement.PlaceItems(rng);
+		FF1Lib.ProjectIdentity.ProjectToFLabContainer.Apply(itemPlacement.PlacedItems);
 
 		NpcData.UpdateItemPlacement(itemPlacement.PlacedItems);
 		ShopData.UpdateShopSlotPlacement(itemPlacement.PlacedItems);
