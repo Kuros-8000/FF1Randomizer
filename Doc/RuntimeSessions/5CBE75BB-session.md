@@ -1,3 +1,7 @@
+> **Superseded publication — do not execute requests from this copy.**
+> The active ledger is in `Kuros-8000/FF1Randomizer-Overhaul`, branch `runtime-ledger-5CBE75BB`, at `Doc/RuntimeSessions/5CBE75BB-session.md`.
+> This historical copy was mistakenly published to FF1Randomizer; retained for provenance.
+
 # 5CBE75BB Runtime Session
 
 Created: 2026-09-30 (America/Los_Angeles)
